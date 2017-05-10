@@ -6,7 +6,7 @@ require_relative 'cities'
 class CraigsList
   include Cities
   
-  VALID_FIELDS = [:query, :srchType]
+  VALID_FIELDS = [:query, :srchType, :s, :min_price, :max_price, :min_bedrooms, :max_bedrooms, :min_bathrooms, :max_bathrooms, :sort]
   
   ERRORS = [OpenURI::HTTPError]
   
@@ -15,17 +15,19 @@ class CraigsList
       options.merge!(srchType: "T")
       options.delete(:title_only)
     end
-    uri = "https://#{options[:city]}.craigslist.org/search/sss?#{to_query(options)}"
-
+    uri = "https://#{options[:city]}.craigslist.org/search/hhh?#{to_query(options[:query])}"
     begin
       doc = Nokogiri::HTML(open(uri))
-
-      doc.css('p.row').flat_map do |link|
+      doc.css('li.result-row').flat_map do |link|
         [
          data_id: link["data-pid"] ,
+         datetime:  link.css("time.result-date").attr('datetime').text,
          description:  link.css("a").text,
          url: "https://#{options[:city]}.craigslist.org#{link.css("a")[0]["href"]}",
-         price: extract_price(link.css("span.price").text)
+         hood: link.css("span.result-hood").text,
+         price: extract_price(link.css("span.result-price")),
+         bedrooms: extract_bedrooms(link.css('span.housing').text),
+         sq_ft: extract_sq_ft(link.css('span.housing').text)
         ]
       end
     rescue *ERRORS => e
@@ -39,7 +41,7 @@ class CraigsList
   
   def method_missing(method,*args)
     super unless Cities::CITIES.include? city ||= extract_city(method)
-    
+     
     params = { query: args.first , city: city}
     params.merge!(title_only: true) if /titles/ =~ method
       
@@ -85,7 +87,7 @@ class CraigsList
   end
   
   private
-  
+
   def extract_city(method_name)
     
     if /titles/ =~ method_name
@@ -95,10 +97,40 @@ class CraigsList
     end
   end
   
-  def extract_price(dollar_string)
-    dollar_string[1..-1]
+  def extract_price(price_elements)
+    if price_elements.size > 0
+      price_elements.first.text
+    else
+      ''
+    end
   end
-  
+
+  def remove_whitespace(str)
+    str.gsub(/[\s+]*[-]*[\s+]/, "")
+  end
+
+  def extract_sq_ft(housing)
+    housing = remove_whitespace(housing)
+    if housing.scan('ft').size < 0
+      return ''
+    else
+      if housing.scan('br').size < 0
+        return housing
+      else
+        return housing.split('br')[1]
+      end
+    end
+  end
+
+  def extract_bedrooms(housing)
+    housing = remove_whitespace(housing)
+    if housing.scan('br').size < 0
+      return ''
+    else
+      return housing.split('br')[0]
+    end
+  end
+
   def to_query(hsh)
     hsh.select { |k,v| CraigsList::VALID_FIELDS.include? k }.map {|k, v| "#{k}=#{CGI::escape v}" }.join("&")
   end
