@@ -15,7 +15,7 @@ class CraigsList
       options.merge!(srchType: "T")
       options.delete(:title_only)
     end
-    uri = "http://#{options[:city]}.craigslist.org/search/sss?#{to_query(options)}"
+    uri = "https://#{options[:city]}.craigslist.org/search/sss?#{to_query(options)}"
 
     begin
       doc = Nokogiri::HTML(open(uri))
@@ -24,7 +24,7 @@ class CraigsList
         [
          data_id: link["data-pid"] ,
          description:  link.css("a").text,
-         url: "http://#{options[:city]}.craigslist.org#{link.css("a")[0]["href"]}",
+         url: "https://#{options[:city]}.craigslist.org#{link.css("a")[0]["href"]}",
          price: extract_price(link.css("span.price").text)
         ]
       end

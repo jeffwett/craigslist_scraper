@@ -16,18 +16,18 @@ describe CraigsList do
     end
 	
     it "addes '+' to white space in queries" do
-      craigslist.should_receive(:open).with("http://denver.craigslist.org/search/sss?query=iphone+5")
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5")
       
       craigslist.search(city: "denver" , query: "iphone 5")
     end
     
     it "adds title only filter to url" do
-      craigslist.should_receive(:open).with("http://denver.craigslist.org/search/sss?query=iphone+5&srchType=T")
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5&srchType=T")
       craigslist.search(city: "denver" , query: "iphone 5" , title_only: true)
     end
 	  
     it "doesn't filter when title only is false" do
-      craigslist.should_receive(:open).with("http://denver.craigslist.org/search/sss?query=iphone+5")
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5")
       craigslist.search(city: "denver" , query: "iphone 5" , title_only: false )
     end
     
@@ -37,7 +37,7 @@ describe CraigsList do
     
     it "builds the correct reference url" do
       city = "shanghai"
-      craigslist.search(city: city)[0][:url].should == "http://#{city}.craigslist.org/mob/3849318365.html"
+      craigslist.search(city: city)[0][:url].should == "https://#{city}.craigslist.org/mob/3849318365.html"
     end
 
     it "returns [error: {}] if OpenURI::HTTPError is thrown" do
