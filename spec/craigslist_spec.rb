@@ -7,41 +7,40 @@ describe CraigsList do
     before { craigslist.stub(:open).and_return(File.read(File.dirname(__FILE__) + '/mock_craigslist_data.html')) }
     
     it "returns an array with all the items" do
-      craigslist.search.length.should == 100
-      craigslist.search[0].keys.should == [:data_id, :description, :url, :price]
+      craigslist.search.length.should == 28 
+      craigslist.search[0].keys.should == [:data_id, :datetime, :description, :url, :hood, :price, :bedrooms, :sq_ft] 
     end
 	
     it "has the right keys " do
-      craigslist.search[0].keys.should == [:data_id, :description, :url, :price]
+      craigslist.search[0].keys.should == [:data_id, :datetime, :description, :url, :hood, :price, :bedrooms, :sq_ft] 
     end
 	
     it "addes '+' to white space in queries" do
-      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5")
-      
-      craigslist.search(city: "denver" , query: "iphone 5")
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/hhh?query=studio+apartment")
+      craigslist.search(city: "denver" , query: { query: "studio apartment" })
     end
     
     it "adds title only filter to url" do
-      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5&srchType=T")
-      craigslist.search(city: "denver" , query: "iphone 5" , title_only: true)
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/hhh?query=studio+apartment&srchType=T")
+      craigslist.search(city: "denver" , query: { query: "studio apartment", title_only: true })
     end
 	  
     it "doesn't filter when title only is false" do
-      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/sss?query=iphone+5")
-      craigslist.search(city: "denver" , query: "iphone 5" , title_only: false )
+      craigslist.should_receive(:open).with("https://denver.craigslist.org/search/hhh?query=studio+apartment")
+      craigslist.search(city: "denver" , query: { query: "studio apartment" , title_only: false } )
     end
     
     it "exracts the price" do
-      craigslist.search[0][:price].should == "70"
+      craigslist.search[0][:price].should == "$2990"
     end
     
     it "builds the correct reference url" do
-      city = "shanghai"
-      craigslist.search(city: city)[0][:url].should == "https://#{city}.craigslist.org/mob/3849318365.html"
+      city = "sfbay"
+      craigslist.search(city: city)[0][:url].should == "https://#{city}.craigslist.org/sfc/apa/6126432054.html"
     end
 
     it "returns [error: {}] if OpenURI::HTTPError is thrown" do
-      exception_io = mock('io')
+      exception_io = double('io')
       exception_io.stub_chain(:status,:[]).with(0).and_return('302')          
       craigslist.stub(:open).with(anything).and_raise(OpenURI::HTTPError.new('',exception_io))
 
@@ -74,7 +73,7 @@ describe CraigsList do
     
     it "calls search for a valid city" do
       CraigsList::CITIES.each do |city|
-        craigslist.should_receive(:search).with(city: city , query: nil , title_only: true)
+        craigslist.should_receive(:search).with(city: city , query: nil , title_only: true )
         
         craigslist.send("search_titles_in_#{city}_for")
       end
@@ -159,16 +158,16 @@ describe CraigsList do
   describe ".search_all_cities_for" do
     
     it "returns [] for cities with no search results" do
-      craigslist.stub(:search).with(city: "denver" , query:"something cool" ).and_return([])
-      craigslist.stub(:search).with(city: "boulder", query:"something cool" ).and_return([])
+      craigslist.stub(:search).with(city: "denver" , query: "something cool" ).and_return([])
+      craigslist.stub(:search).with(city: "boulder", query: "something cool" ).and_return([])
       stub_const("Cities::CITIES",["denver","boulder"])
       
       craigslist.search_all_cities_for("something cool").should == []
     end
 
     it "returns concatenated items for cities with  search results" do
-      craigslist.stub(:search).with(city: "denver" , query:"something cool" ).and_return([{in_denver: "something in denver"}])
-      craigslist.stub(:search).with(city: "boulder", query:"something cool" ).and_return([{in_boulder: "something in boulder"}])
+      craigslist.stub(:search).with(city: "denver" , query: "something cool" ).and_return([{in_denver: "something in denver"}])
+      craigslist.stub(:search).with(city: "boulder", query: "something cool" ).and_return([{in_boulder: "something in boulder"}])
       stub_const("Cities::CITIES",["denver","boulder"])
       
       craigslist.search_all_cities_for("something cool").should == [{in_denver: "something in denver"}, {in_boulder: "something in boulder"}]

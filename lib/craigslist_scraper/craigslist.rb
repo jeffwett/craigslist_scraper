@@ -6,16 +6,16 @@ require_relative 'cities'
 class CraigsList
   include Cities
   
-  VALID_FIELDS = [:query, :srchType, :s, :min_price, :max_price, :min_bedrooms, :max_bedrooms, :min_bathrooms, :max_bathrooms, :sort]
+  VALID_FIELDS = [:query, :srchType, :s, :min_price, :max_price, :min_bedrooms, :max_bedrooms, :min_bathrooms, :max_bathrooms, :sort, :postal, :search_distance, :postedToday]
   
   ERRORS = [OpenURI::HTTPError]
   
   def search(options ={})
-    if options[:title_only]
-      options.merge!(srchType: "T")
-      options.delete(:title_only)
+    options[:query] ||= { query: '' }
+		if options[:query][:title_only]
+      options[:query][:srchType] = "T"
     end
-    uri = "https://#{options[:city]}.craigslist.org/search/hhh?#{to_query(options[:query])}"
+		uri = "https://#{options[:city]}.craigslist.org/search/hhh?#{to_query(options[:query])}"
     begin
       doc = Nokogiri::HTML(open(uri))
       doc.css('li.result-row').flat_map do |link|
@@ -132,7 +132,7 @@ class CraigsList
   end
 
   def to_query(hsh)
-    hsh.select { |k,v| CraigsList::VALID_FIELDS.include? k }.map {|k, v| "#{k}=#{CGI::escape v}" }.join("&")
+		hsh.select { |k,v| CraigsList::VALID_FIELDS.include? k }.map {|k, v| "#{k}=#{CGI::escape v}" }.join("&")
   end
 
 end
