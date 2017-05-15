@@ -3,13 +3,17 @@ require 'open-uri'
 require 'cgi'
 require_relative 'cities'
 require_relative 'util'
+require_relative 'basic_craigslist_search_parser'
+
 class CraigsList
   include Cities
+  include BasicCraigslistSearchParser 
   include ClassLevelInheritableAttributes
   inheritable_attributes :valid_fields, :data_fields, :endpoint 
   
-  @valid_fields = [:query]
-  @data_fields = [:data_id]
+  @valid_fields = [:query, :srchType, :s, :min_price, :max_price, 
+                  :sort, :postal, :search_distance, :postedToday]
+  @data_fields = [:data_id, :datetime, :description, :url, :hood, :price]
   @endpoint = 'sss'
 
   ERRORS = [OpenURI::HTTPError]
@@ -21,11 +25,23 @@ class CraigsList
   def _data_id(link, options)
     link["data-pid"]
   end
-  
-  def search(options={ query: { query: '' }})
+
+  def preprocess(options)
+    if options[:query][:posted_today]
+      options[:query][:postedToday] = 'T'
+    end
+    if options[:query][:title_only]
+      options[:query][:srchType] = 'T'
+    end
+  end
+
+  def search(options={})
+    options[:query] ||= { query: '' }
+    preprocess(options)
     params = to_query(options[:query]) 
     base_url = "https://#{options[:city]}.craigslist.org/search"
     uri = "#{base_url}/#{self.class.endpoint}?#{params}"
+    puts uri
     begin
       doc = Nokogiri::HTML(open(uri))
       doc.css('li.result-row').flat_map do |link|
