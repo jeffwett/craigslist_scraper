@@ -1,7 +1,7 @@
 require 'craigslist_scraper/apartment'
 
-describe Apartment do
-  let!(:apartment) { Apartment.new }
+describe Craigslist::Scrapers::Apartment do
+  let!(:apartment) { Craigslist::Scrapers::Apartment.new }
   
   describe ".search" do
     before { apartment.stub(:open).and_return(File.read(File.dirname(__FILE__) + '/mock_craigslist_apartment_data.html')) }
@@ -50,7 +50,7 @@ describe Apartment do
 
   describe "dynamic method search_{cityname}_for" do
     it "calls search for a valid city" do
-      Apartment::CITIES.each do |city|
+      Craigslist::Scrapers::Apartment::CITIES.each do |city|
         apartment.should_receive(:search).with(city: city , query: nil)
         
         apartment.send("search_#{city}_for")
@@ -72,7 +72,7 @@ describe Apartment do
   describe "dynamic method search_titles_in_{cityname}_for" do
     
     it "calls search for a valid city" do
-      Apartment::CITIES.each do |city|
+      Craigslist::Scrapers::Apartment::CITIES.each do |city|
         apartment.should_receive(:search).with(city: city , query: nil , title_only: true )
         
         apartment.send("search_titles_in_#{city}_for")
@@ -157,7 +157,7 @@ describe Apartment do
     it "returns [] for cities with no search results" do
       apartment.stub(:search).with(city: "denver" , query: "something cool" ).and_return([])
       apartment.stub(:search).with(city: "boulder", query: "something cool" ).and_return([])
-      stub_const("Cities::CITIES",["denver","boulder"])
+      stub_const("Craigslist::Cities::CITIES",["denver","boulder"])
       
       apartment.search_all_cities_for("something cool").should == []
     end
@@ -165,7 +165,7 @@ describe Apartment do
     it "returns concatenated items for cities with  search results" do
       apartment.stub(:search).with(city: "denver" , query: "something cool" ).and_return([{in_denver: "something in denver"}])
       apartment.stub(:search).with(city: "boulder", query: "something cool" ).and_return([{in_boulder: "something in boulder"}])
-      stub_const("Cities::CITIES",["denver","boulder"])
+      stub_const("Craigslist::Cities::CITIES",["denver","boulder"])
       
       apartment.search_all_cities_for("something cool").should == [{in_denver: "something in denver"}, {in_boulder: "something in boulder"}]
     end

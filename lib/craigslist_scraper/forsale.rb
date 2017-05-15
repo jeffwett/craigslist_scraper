@@ -1,4 +1,7 @@
 require_relative 'craigslist'
-class ForSale < CraigsList
+module CraigsList
+  module Scrapers
+    class ForSale < SearchScraper 
+    end
+  end
 end
-
