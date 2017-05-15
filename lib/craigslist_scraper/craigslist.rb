@@ -2,33 +2,38 @@ require 'nokogiri'
 require 'open-uri'
 require 'cgi'
 require_relative 'cities'
-
+require_relative 'util'
 class CraigsList
   include Cities
+  include ClassLevelInheritableAttributes
+  inheritable_attributes :valid_fields, :data_fields, :endpoint 
   
-  VALID_FIELDS = [:query, :srchType, :s, :min_price, :max_price, :min_bedrooms, :max_bedrooms, :min_bathrooms, :max_bathrooms, :sort, :postal, :search_distance, :postedToday]
-  
+  @valid_fields = [:query]
+  @data_fields = [:data_id]
+  @endpoint = 'sss'
+
   ERRORS = [OpenURI::HTTPError]
+
+  def valid_fields
+    self.class.methods.grep
+  end
+
+  def _data_id(link, options)
+    link["data-pid"]
+  end
   
-  def search(options ={})
-    options[:query] ||= { query: '' }
-		if options[:query][:title_only]
-      options[:query][:srchType] = "T"
-    end
-		uri = "https://#{options[:city]}.craigslist.org/search/hhh?#{to_query(options[:query])}"
+  def search(options={ query: { query: '' }})
+    params = to_query(options[:query]) 
+    base_url = "https://#{options[:city]}.craigslist.org/search"
+    uri = "#{base_url}/#{self.class.endpoint}?#{params}"
     begin
       doc = Nokogiri::HTML(open(uri))
       doc.css('li.result-row').flat_map do |link|
-        [
-         data_id: link["data-pid"] ,
-         datetime:  link.css("time.result-date").attr('datetime').text,
-         description:  link.css("a").text,
-         url: "https://#{options[:city]}.craigslist.org#{link.css("a")[0]["href"]}",
-         hood: link.css("span.result-hood").text,
-         price: extract_price(link.css("span.result-price")),
-         bedrooms: extract_bedrooms(link.css('span.housing').text),
-         sq_ft: extract_sq_ft(link.css('span.housing').text)
-        ]
+        data = {}
+        self.class.data_fields.map do |field|
+          data[field] = self.send("_#{field}", link, options) 
+        end
+        data
       end
     rescue *ERRORS => e
       [{error: "error opening city: #{options[:city]}"} ]
@@ -40,7 +45,7 @@ class CraigsList
   end
   
   def method_missing(method,*args)
-    super unless Cities::CITIES.include? city ||= extract_city(method)
+    super unless cities.include? city ||= extract_city(method)
      
     params = { query: args.first , city: city}
     params.merge!(title_only: true) if /titles/ =~ method
@@ -49,7 +54,7 @@ class CraigsList
   end
 
   def search_all_cities_for(query)
-    Cities::CITIES.flat_map do |city|
+    cities.flat_map do |city|
       search(city: city , query: query)
     end
   end
@@ -75,7 +80,7 @@ class CraigsList
       end
     end
 
-    private
+  private
 
     def middle
       size / 2
@@ -89,7 +94,6 @@ class CraigsList
   private
 
   def extract_city(method_name)
-    
     if /titles/ =~ method_name
       method_name.to_s.gsub("search_titles_in_","").gsub("_for","")
     else
@@ -97,42 +101,7 @@ class CraigsList
     end
   end
   
-  def extract_price(price_elements)
-    if price_elements.size > 0
-      price_elements.first.text
-    else
-      ''
-    end
-  end
-
-  def remove_whitespace(str)
-    str.gsub(/[\s+]*[-]*[\s+]/, "")
-  end
-
-  def extract_sq_ft(housing)
-    housing = remove_whitespace(housing)
-    if housing.scan('ft').size < 0
-      return ''
-    else
-      if housing.scan('br').size < 0
-        return housing
-      else
-        return housing.split('br')[1]
-      end
-    end
-  end
-
-  def extract_bedrooms(housing)
-    housing = remove_whitespace(housing)
-    if housing.scan('br').size < 0
-      return ''
-    else
-      return housing.split('br')[0]
-    end
-  end
-
   def to_query(hsh)
-		hsh.select { |k,v| CraigsList::VALID_FIELDS.include? k }.map {|k, v| "#{k}=#{CGI::escape v}" }.join("&")
+		hsh.select { |k,v| self.class.valid_fields.include? k }.map {|k, v| "#{k}=#{CGI::escape v}" }.join("&")
   end
-
 end
